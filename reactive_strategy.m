@@ -1,9 +1,8 @@
-clear all
 hold on
 % System Parameters
 Mvec = [1,2,3,4,5,6:2:10,14:4:40]; % Number of nodes
-Mvec = [10,14:4:40]; % Number of nodes
-Mvec = 40;
+%Mvec = [10,14:4:40]; % Number of nodes
+%Mvec = 5;
 mean_entropy = zeros(1,length(Mvec));
 for j = 1:length(Mvec)
 M = Mvec(j);
@@ -11,7 +10,7 @@ q01 = 0.01; % Transition probability from 0 to 1
 q10 = 0.01; % Transition probability from 1 to 0
 q00 = 1 - q01;
 q11 = 1 - q10;
-N = 50000; % Number of time slots for simulation
+N = 30000; % Number of time slots for simulation
 P = [1-q01, q01; q10, 1-q10];
 % Stationary Distribution
 pi0 = q10 / (q10 + q01);
@@ -49,7 +48,7 @@ alpha = pi0*q01 + pi1*q10; % Probability of transmission
 
         for k = 1:M
             if states_history(k,n) ~= states_history(k,n-1)
-                transmitting_nodes(k) = 1;
+                transmitting_nodes(1,k) = 1;
             end
         end
         num_transmitting_nodes = sum(transmitting_nodes);
@@ -117,7 +116,7 @@ alpha = pi0*q01 + pi1*q10; % Probability of transmission
 end
 % Plotting h(y_n) over time
 % Display state estimation entropy over time
-plot(Mvec, mean_entropy);
+%plot(Mvec, mean_entropy);
 title('State Estimation Entropy vs Number of Nodes');
 xlabel('Number of Nodes');
 ylabel('Entropy');
