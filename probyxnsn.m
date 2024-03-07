@@ -8,6 +8,9 @@ function logprob = probyxnsn(y,n,xn,sn,M,q01,q10)
     logprob = -Inf;
     for xprev = 0:1
         for sprev = 0:M-1
+            if isinf(alphaTable(xprev+1,sprev+1,n-1))
+                continue
+            end
             %compute P(Yn|\simga_{n} and \sigma_{n-1})
             P1 = probabilityYgiventransitions(y,xn,xprev,sn,sprev,M,q01,q10);
             if P1 == 0
@@ -43,8 +46,14 @@ function logprob = probyxnsn(y,n,xn,sn,M,q01,q10)
             %compute the multiplication, given the previous term            
             %Pt = P1*P2*alphaTable(xprev+1,sprev+1,n-1);
             log_Pt = log(P1) + log(P2) + alphaTable(xprev+1,sprev+1,n-1);
+            if isinf(log_Pt)
+                keyboard
+            end
             %prob = prob + Pt;
             logprob = max(logprob, log_Pt) + log(1 + exp(-abs(logprob - log_Pt)));
+            % if isnan(logprob)
+            %     keyboard
+            % end
         end
     end
 
