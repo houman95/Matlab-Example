@@ -16,7 +16,7 @@ function prob = probabilityYgiventransitions(yn,x,xprev,s,sprev,M,q01,q10)
                 if x ~= xprev
                     prob = 0;
                 else
-                    prob = q00^sprev*q11^(M-1-sprev)/(calculate_transition_probability(0, sprev, M, q01, q10));
+                    prob = q00^sprev*q11^(M-1-sprev)/(calculate_transition_probability(k, sprev, M, q01, q10));
                 end
             end
         case{'+'}
@@ -26,7 +26,7 @@ function prob = probabilityYgiventransitions(yn,x,xprev,s,sprev,M,q01,q10)
                 if (k) ~= -1
                     prob = 0;
                 else
-                    prob = sprev*q01*q00^(sprev-1)*q11^(sbarprev)/(calculate_transition_probability(1, sprev, M, q01, q10));
+                    prob = sprev*q01*q00^(sprev-1)*q11^(sbarprev)/(calculate_transition_probability(k, sprev, M, q01, q10));
                 end
             end
         case{'-'}
@@ -82,12 +82,12 @@ function prob = probabilityYgiventransitions(yn,x,xprev,s,sprev,M,q01,q10)
             if(x~=1 || xprev ~=0 || s~=sprev)
                 y1 = 0;
             else
-                y1 = q00^sprev*q11^(sbarprev)/(calculate_transition_probability(0, sprev, M, q01, q10));
+                y1 = q00^sprev*q11^(sbarprev)/(calculate_transition_probability(k, sprev, M, q01, q10));
             end
             if(x~=0 || xprev ~=1 || s~=sprev)
                 y0 = 0;
             else
-                y0 = q00^sprev*q11^(sbarprev)/(calculate_transition_probability(0, sprev, M, q01, q10));
+                y0 = q00^sprev*q11^(sbarprev)/(calculate_transition_probability(k, sprev, M, q01, q10));
             end
             prob = 1 - (yI + yplus + yminus + y1 + y0);
     end
