@@ -1,15 +1,21 @@
 clear all
 hold on
 % System Parameters
-M = 3;
-N = 18; % Number of time slots for simulation
+M = 10;
+N = 54000; % Number of time slots for simulation
 
 global alphaTable
 alphaTable = -Inf(2, M,N); % 2 for x, M for S, 6 for Y categories
-alphaTable(:,:,1) = log(1/8*[1 2 1
-                           1 2 1]);
-q01 = 0.3; % Transition probability from 0 to 1
-q10 = 0.8; % Transition probability from 1 to 0
+% Generate an N x M matrix of random numbers
+initialstateMatrix = rand(2,M);
+
+% Normalize the matrix so that the sum of all its elements is 1
+initialstateMatrix = initialstateMatrix / sum(initialstateMatrix, 'all');
+
+alphaTable(:,:,1) = log(initialstateMatrix);
+clear initialstateMatrix
+q01 = 0.01; % Transition probability from 0 to 1
+q10 = 0.1; % Transition probability from 1 to 0
 q00 = 1 - q01;
 q11 = 1 - q10;
 P = [1-q01, q01; q10, 1-q10];
@@ -95,26 +101,47 @@ states_history = zeros(M,N);
             probysigmanow = probyxnsn(Y,n,xn,sn,M,q01,q10);
                 % Update log_sum_numerator using Jacobian logarithm
             log_prob = probysigmanow;  % Convert current probability to log domain
-            log_sum_numerator = max(log_sum_numerator, log_prob) + log(1 + exp(-abs(log_sum_numerator - log_prob)));
-
+            if(~isinf(log_prob))
+                log_sum_numerator = max(log_sum_numerator, log_prob) + log(1 + exp(-abs(log_sum_numerator - log_prob)));
+            end
+            if(isnan(log_sum_denominator) || isnan(log_sum_numerator))
+                keyboard;
+            end
             alphaTable(xn+1,sn+1,n) = probysigmanow;
             %sum_numerator = sum_numerator + probysigmanow;
             xn = 1;            
             probysigmanow = probyxnsn(Y,n,xn,sn,M,q01,q10);
             % Update log_sum_denominator using Jacobian logarithm
             log_prob = probysigmanow;  % Convert current probability to log domain
-            log_sum_denominator = max(log_sum_denominator, log_prob) + log(1 + exp(-abs(log_sum_denominator - log_prob)));
+            if(~isinf(log_prob))
+                log_sum_denominator = max(log_sum_denominator, log_prob) + log(1 + exp(-abs(log_sum_denominator - log_prob)));
+            end
+            if(isnan(log_sum_denominator) || isnan(log_sum_numerator))
+                keyboard;
+            end
             alphaTable(xn+1,sn+1,n) = probysigmanow;
             %sum_denumerator = sum_denumerator + probysigmanow;
         end
+        % if(isinf(log_sum_numerator)||isinf(log_sum_denominator))
+        %    % keyboard;
+        % end
         lambda(n) = log_sum_numerator - log_sum_denominator;
-
+        if isnan(lambda(n))
+            keyboard;
+        end
+        if(isinf(lambda(n)))
+            state_entropy(n) = 0;
+            continue
+        end
 
         % Convert lambda_n to probabilities
         P_X_given_Y0 = exp(lambda(n)) / (1 + exp(lambda(n)));
         P_X_given_Y1 = 1 / (1 + exp(lambda(n)));
         % Calculate state estimation entropy
         state_entropy(n) = -P_X_given_Y0 * log2(P_X_given_Y0 + eps) - P_X_given_Y1 * log2(P_X_given_Y1 + eps);
+        if(isnan(state_entropy(n)))
+            keyboard;
+        end
         lambda_prev = lambda;
 
     end
