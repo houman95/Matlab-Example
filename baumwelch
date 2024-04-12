@@ -1,118 +1,67 @@
 %close all% System Parameters
 clear all
-Mvec = [2,3,4,5,6:2:10,14:4:40];
-Mvec = 10;% Number of nodes
-mean_entropy = zeros(1,length(Mvec));
-for j = 1:length(Mvec)
-    M = Mvec(j);
-    tx = 1/M; % Probability of transmission
-    omega = tx*(1-tx)^(M-1);
-    q01 = 0.1; % Transition probability from 0 to 1
-    q10 = 0.01; % Transition probability from 1 to 0
-    q00 = 1 - q01;
-    q11 = 1 - q10;
-    N = 1000; % Number of time slots for simulation
-    P = [1-q01, q01; q10, 1-q10];
-    % Stationary Distribution
-    pi0 = q10 / (q10 + q01);
-    pi1 = q01 / (q10 + q01);
-    % Initialization
-    states = randi([0, 1], M, 1); % Initial states of all sources
-    target_source = states(1);
-    lambda = zeros(1, N+1); % Log-likelihood ratio for each source and time slot
-    Y_history = zeros(N,1);
-    state_entropy = zeros(1, N); % State estimation entropy for target source at every time slot
-    states_history = zeros(M,N);
-    % Markov Chain Transition Matrix
-    P = [1-q01, q01; q10, 1-q10];
-    B = [tx*(1 - tx)^(M-1), 0,(1-tx)^M,pi0*(M-1)*omega,pi1*(M-1)*omega,1 - (1-tx)^M - M*omega
-         0, tx*(1 - tx)^(M-1),(1-tx)^M,pi0*(M-1)*omega,pi1*(M-1)*omega,1 - (1-tx)^M - M*omega]';
-    A = 0.5*ones(2);
-    % Main Simulation Loop for a Single Source
-    Y_history(1) = 3;
-    for n = 2:N
-        for k=1:M
-        % record the state value and Determine the transitions for the next
-        % state based on the current state
-            if states(k) == 0
-                transitionProb = [1-q01, q01]; % Probability of staying at 0 and moving to 1
-            else
-                transitionProb = [q10, 1-q10]; % Probability of moving to 0 and staying at 1
-            end
-            % Select the next state based on the transition probabilities
-            states_history(k,n) = states(k);
-            states(k) = randsrc(1, 1, [0, 1; transitionProb]);
-        end
-        % Determine which sources are transmitting
-        transmitting_nodes = rand(M, 1) < tx;
-        num_transmitting_nodes = sum(transmitting_nodes);
-            % Update states and calculate output Y
-        Y = 3; % Assume idle initially
-        if num_transmitting_nodes == 1
-            transmitting_source = find(transmitting_nodes);
-            if transmitting_source == 1 % Target source is transmitting
-                Y = states(transmitting_source) + 1;
-            else %other sources
-                if states(transmitting_source) == 0
-                    Y = 4;
-                else
-                    Y = 5;
-                end
-            end        
-        elseif num_transmitting_nodes > 1
-            Y = 6; % Collision
-        end
-        Y_history(n) = Y;
+M = 10;
+tx = 1/M; % Probability of transmission
+omega = tx*(1-tx)^(M-1);
+q01 = 0.1; % Transition probability from 0 to 1
+q10 = 0.01; % Transition probability from 1 to 0
+q00 = 1 - q01;
+q11 = 1 - q10;
+N = 1000; % Number of time slots for simulation
+P = [1-q01, q01; q10, 1-q10];
+% Stationary Distribution
+pi0 = q10 / (q10 + q01);
+pi1 = q01 / (q10 + q01);
+% Initialization
+state = randi([0, 1], 1, 1); % Initial states of all sources
+target_source = state(1);
+lambda = zeros(1, N+1); % Log-likelihood ratio for each source and time slot
+Y_history = zeros(N,1);
+state_entropy = zeros(1, N); % State estimation entropy for target source at every time slot
+states_history = zeros(M,N);
+% Markov Chain Transition Matrix
+P = [1-q01, q01; q10, 1-q10];
+B = [tx*(1 - tx)^(M-1), 0,(1-tx)^M,pi0*(M-1)*omega,pi1*(M-1)*omega,1 - (1-tx)^M - M*omega
+     0, tx*(1 - tx)^(M-1),(1-tx)^M,pi0*(M-1)*omega,pi1*(M-1)*omega,1 - (1-tx)^M - M*omega];
+A = [0.2 0.8
+    0.05 0.95];
+%A = 0.5*ones(2);
+% Main Simulation Loop for a Single Source
+Y_history(1) = 3;
+y_values = 1:size(B, 2);  % Create an array of possible output values
+for t = 2:N
+    if state == 0
+        transitionProb = [1-q01, q01]; % Probability of staying at 0 and moving to 1
+    else
+        transitionProb = [q10, 1-q10]; % Probability of moving to 0 and staying at 1
     end
-    %mean_entropy(j) = mean(state_entropy);
-    seqlength = 200;
-    maxiter = 200;
-    Ahist = zeros(maxiter,2,2);
-    Ahist(1,:,:) = A;
-    for iter = 2:maxiter
-    alpha = zeros(seqlength,2);
-    pi0 = A(2,1)/(A(1,2) + A(2,1));
-    pi1 = A(1,2)/(A(1,2) + A(2,1));
-    alpha(1,1) = pi0*B(3,1);
-    alpha(1,2) = pi1*B(3,2);
-    beta = zeros(seqlength,2);
-    beta(seqlength,:) = ones(1,2);
-    for t = 2:seqlength
-        alpha(t,1) = alpha(t-1,:)*A(:,1)*B(Y_history(t),1);
-        alpha(t,2) = alpha(t-1,:)*A(:,2)*B(Y_history(t),2);        
-    end
-    for t = seqlength-1:-1:1
-        beta(t,1) = beta(t+1,:).*A(1,:)*B(Y_history(t+1),:)';
-        beta(t,2) = beta(t+1,:).*A(2,:)*B(Y_history(t+1),:)';
-    end
-    ksi = zeros(t,2,2);
-    for t = 1:seqlength-1
-        denumksi = 0;
-        for i=1:2
-            for j=1:2
-                denumksi = denumksi+ alpha(t,i)*beta(t+1,j)*A(i,j)*B(Y_history(t+1),j);
-            end
-        end
-        for i=1:2
-            for j=1:2
-                ksi(t,i,j) = alpha(t,i)*beta(t+1,j)*A(i,j)*B(Y_history(t+1),j)/denumksi;
-            end
-        end
-    end
-    newA = zeros(2);
-    for i = 1:2
-        for j = 1:2
-            newA(i,j) = sum(ksi(:,i,j))/sum(ksi(:,i,:),'all');
-        end
-    end
-    Ahist(iter+1,:,:) = newA;
-    A = newA;
-    end
+    state = randsrc(1, 1, [0, 1; transitionProb]);    
+    % Draw one of the possible y values based on the emission probabilities for state x
+    Y_history(t) = randsrc(1, 1, [y_values; B(state + 1, :)]);
 end
-% Plotting h(y_n) over time
-% Display state estimation entropy over time
-semilogy(Mvec, mean_entropy);
-title('State Estimation Entropy Over Time');
-xlabel('Number of nodes');
-ylabel('Entropy');
-hold on
+%%
+%clear all
+A = 0.2*ones(2);
+A = [0.8 0.2
+    0.1 0.9];
+
+q01 = 0.4; % Transition probability from 0 to 1
+q10 = 0.05; % Transition probability from 1 to 0
+P = [1-q01, q01; q10, 1-q10];
+nsamples = 1;
+lsample = 8000;
+M = 10;
+tx = 1/M; % Probability of transmission
+omega = tx*(1-tx)^(M-1);
+pi0 = q10 / (q10 + q01);
+pi1 = q01 / (q10 + q01);
+B = [tx*(1 - tx)^(M-1), 0,(1-tx)^M,pi0*(M-1)*omega,pi1*(M-1)*omega,1 - (1-tx)^M - M*omega
+     0, tx*(1 - tx)^(M-1),(1-tx)^M,pi0*(M-1)*omega,pi1*(M-1)*omega,1 - (1-tx)^M - M*omega];
+Y_history = cell(1,nsamples);
+
+for i = 1:nsamples
+    Y_history{i} = hmmgenerate(lsample,P,B);
+end
+%%
+[esTr,esE] = hmmtrain(Y_history,esTr,esE,'Maxiterations',42000,'Tolerance',1e-6);
+esTr
