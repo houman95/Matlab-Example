@@ -1,0 +1,76 @@
+% Define parameters
+clear all
+close all
+clc
+num_bins = 999999;  % Choose an odd number so that there is a central bin for lambda = 0
+lambda_range = linspace(-10, 10, num_bins);  % Define the range of LLRs
+% Ensure that lambda = 0 corresponds exactly to the central bin
+% Check if zero is in the bin range and adjust if necessary
+[~, lambda_zero_idx] = min(abs(lambda_range));  % This should be the middle bin
+X = [0, 1];  % Binary set for X
+Y = [0, 1, 2];  % Ternary set for Y
+
+% Transition probabilities for X
+q = [0.99, 0.01; 0.01, 0.99];  % Example transition matrix q(x_n|x_{n-1})
+p = [0.73,0.27;0.27,0.73];
+%p = q;
+% Emission probability matrix P(Y|X)
+P_y_given_x = transpose(emitprobCalc(10));
+% Initialize P(lambda_n, x_n) (all values set to zero initially)
+P_lambda_x = zeros(num_bins, length(X));
+
+% Initialize P(lambda_{n-1}, x_{n-1})
+P_lambda_x_prev = zeros(num_bins, length(X));  % Set all values to zero initially
+
+% Set P(lambda=0, x=0) = 0.5 and P(lambda=0, x=1) = 0.5
+P_lambda_x_prev(lambda_zero_idx, :) = 0.5;
+
+% Define the LLR function f(y_n, lambda_{n-1})
+f = @(y_n, lambda_prev) log(P_y_given_x(y_n + 1, 1) / P_y_given_x(y_n + 1, 2)) + ...
+    log((p(1,1) + p(2,1) * exp(-lambda_prev)) / (p(1,2) + p(2,2) * exp(-lambda_prev)));
+
+% Iterate over all possible states
+for iter = 1:100
+    P_lambda_x = zeros(num_bins, length(X));
+for x_n = X
+    for y_n = Y
+        for lambda_prev_idx = 1:num_bins
+            lambda_prev = lambda_range(lambda_prev_idx);
+
+            % Calculate the LLR
+            lambda_n = f(y_n, lambda_prev);
+
+            % Quantize lambda_n to the nearest bin
+            % Quantize lambda_n to the appropriate bin
+            if lambda_n == 0
+                lambda_n_idx = lambda_zero_idx;
+            elseif lambda_n > lambda_range(end)
+                lambda_n_idx = num_bins;  % Assign to the largest bin
+            elseif lambda_n < lambda_range(1)
+                lambda_n_idx = 1;  % Assign to the smallest bin
+            else
+                [~, lambda_n_idx] = min(abs(lambda_range - lambda_n));
+            end
+
+            % Sum over all previous states x_{n-1}
+            for x_prev = X
+                P_lambda_x(lambda_n_idx, x_n + 1) = P_lambda_x(lambda_n_idx, x_n + 1) + ...
+                    P_y_given_x(y_n + 1, x_n + 1) * q(x_prev + 1, x_n + 1) * P_lambda_x_prev(lambda_prev_idx, x_prev + 1);
+            end
+        end
+    end
+end
+% Normalize P_lambda_x
+%P_lambda_x = P_lambda_x ./ sum(P_lambda_x(:));
+P_lambda_x_prev = P_lambda_x;
+end
+
+
+% Display results
+disp('Probability of Error');
+
+errorprob = sum(P_lambda_x(1:lambda_zero_idx-1,1)) + sum(P_lambda_x(lambda_zero_idx+1:end,2));
+disp(errorprob)
+disp('Probability of Error with zero lambda');
+
+disp(errorprob+ 0.5*sum(P_lambda_x(lambda_zero_idx,:)))
